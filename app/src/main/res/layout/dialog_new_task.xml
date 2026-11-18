@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/soft_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/nueva_tarea"
+            android:textColor="@color/soft_coral"
+            android:textSize="23sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/nombre_de_la_tarea"
+            android:textColor="@color/soft_text"
+            android:textSize="15sp" />
+
+        <EditText
+            android:id="@+id/taskNameInput"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="6dp"
+            android:hint="@string/ej_estudiar_para_la_prueba"
+            android:inputType="textCapSentences"
+            android:padding="12dp"
+            android:textColor="@color/soft_text"
+            android:textColorHint="@color/soft_text_light" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/dificultad"
+            android:textColor="@color/soft_text"
+            android:textSize="15sp" />
+
+        <RadioGroup
+            android:id="@+id/difficultyGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/easyRadio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/f_cil"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/mediumRadio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/media" />
+
+            <RadioButton
+                android:id="@+id/hardRadio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/dif_cil" />
+
+        </RadioGroup>
+
+        <CheckBox
+            android:id="@+id/academicCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/cita_entrega_trabajo" />
+
+        <LinearLayout
+            android:id="@+id/dueDateContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/fecha_evento_entrega"
+                android:textColor="@color/soft_text_light"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/dueDateInput"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:hint="@string/dd_mm_aaaa"
+                android:inputType="date"
+                android:padding="12dp" />
+
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/prerequisiteCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/restricci_n" />
+
+        <LinearLayout
+            android:id="@+id/prerequisiteContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/requisito_previo"
+                android:textColor="@color/soft_text_light"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/prerequisiteInput"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:hint="@string/ej_doblar_la_ropa_primero"
+                android:inputType="textCapSentences"
+                android:padding="12dp" />
+
+            <LinearLayout
+                android:id="@+id/prerequisiteSuggestions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

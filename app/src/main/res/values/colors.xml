@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="soft_green">#588A87</color>
+    <color name="soft_green_light">#B6C6BE</color>
+    <color name="soft_beige">#DFD9CA</color>
+    <color name="soft_pink">#EFCABF</color>
+    <color name="soft_coral">#EEA995</color>
+    <color name="soft_mustard">#E0AF61</color>
+
+    <color name="soft_background">#FAF8F3</color>
+    <color name="soft_text">#454545</color>
+    <color name="soft_text_light">#77736E</color>
+    <color name="white">#FFFFFF</color>
+
+</resources>

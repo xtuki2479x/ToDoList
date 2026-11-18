@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="@string/nav_home" />
+
+    <item
+        android:id="@+id/nav_tasks"
+        android:icon="@drawable/ic_tasks"
+        android:title="@string/nav_tasks" />
+
+    <item
+        android:id="@+id/nav_calendar"
+        android:icon="@drawable/ic_calendar"
+        android:title="@string/nav_calendar" />
+
+    <item
+        android:id="@+id/nav_notes"
+        android:icon="@drawable/ic_notes"
+        android:title="@string/nav_notes" />
+
+    <item
+        android:id="@+id/nav_shopping"
+        android:icon="@drawable/ic_shopping"
+        android:title="@string/nav_shopping" />
+
+    <item
+        android:id="@+id/nav_wellness"
+        android:icon="@drawable/ic_wellness"
+        android:title="@string/nav_wellness" />
+
+    <item
+        android:id="@+id/nav_customization"
+        android:icon="@drawable/ic_customization"
+        android:title="@string/nav_customization" />
+
+</menu>
