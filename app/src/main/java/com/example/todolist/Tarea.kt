@@ -1,3 +1,4 @@
+
 package com.example.todolist
 
 data class Tarea(
@@ -6,5 +7,6 @@ data class Tarea(
     val dificultad: String = "",
     val academica: Boolean = false,
     val fechaVencimiento: String? = null,
-    val completada: Boolean = false
+    val completada: Boolean = false,
+    val prerequisiteId: String? = null
 )
