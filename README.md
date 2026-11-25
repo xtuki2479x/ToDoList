@@ -101,9 +101,23 @@ Diseño en **3FN**:
 ```
 
 ---
+## Nueva versión: Migración de módulos a Firebase Firestore
 
-## Estado del proyecto
+En esta etapa se comenzó la migración de los módulos principales de la aplicación Soft Days desde SQLite hacia Firebase Firestore, con el objetivo de centralizar el almacenamiento de información en la nube y mantener la funcionalidad existente.
 
-La migración de SharedPreferences/JSON a SQLite está completa y funcionando en todos los módulos.
+### Actividades realizadas
 
----
+- **Migración del módulo de tareas:** se implementó la conexión con Firestore para registrar, consultar, actualizar y eliminar tareas.
+- **Migración del calendario:** se adaptó para obtener las tareas almacenadas en Firestore, conservando la visualización y navegación del calendario.
+- **Migración del módulo de compras:** se implementó el almacenamiento de productos en Firestore, permitiendo agregar productos, definir cantidades, marcar productos como comprados y eliminarlos.
+- **Implementación de modelos y repositorios:** se crearon las clases `Tarea`, `TareaRepository`, `Producto` y `ProductoRepository` para organizar el acceso y la manipulación de los datos.
+- **Operaciones asíncronas:** se utilizaron corrutinas y `await()` para realizar las operaciones con Firestore sin bloquear el hilo principal de la aplicación.
+- **Pruebas funcionales:** se verificó el funcionamiento de los módulos migrados, comprobando que los datos se guardaran y que las operaciones de modificación y eliminación funcionaran correctamente.
+
+### Estado de la etapa
+
+Los módulos de tareas, calendario y compras se encuentran migrados y probados con Firebase Firestore.
+
+Quedan pendientes la migración del módulo de notas, la configuración de paletas y la eliminación de las dependencias restantes de SQLite.
+
+**Resultado:** se logró avanzar en la transición del almacenamiento local SQLite hacia Firebase Firestore, manteniendo las funcionalidades principales de los módulos migrados.
