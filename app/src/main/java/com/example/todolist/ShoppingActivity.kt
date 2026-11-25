@@ -1,6 +1,6 @@
+
 package com.example.todolist
 
-import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
@@ -13,10 +13,13 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
+import kotlinx.coroutines.launch
 
 class ShoppingActivity : AppCompatActivity() {
 
@@ -26,11 +29,8 @@ class ShoppingActivity : AppCompatActivity() {
     private lateinit var shoppingItemsContainer: LinearLayout
     private lateinit var noShoppingItemsText: TextView
 
-    // CAMBIA: lleva id, nombre, cantidad y estado
-    private val items = mutableListOf<ShoppingItem>()
-
-    // NUEVO
-    private lateinit var db: DatabaseHelper
+    private val items = mutableListOf<Producto>()
+    private val productoRepository = ProductoRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,11 +61,6 @@ class ShoppingActivity : AppCompatActivity() {
 
         navigationView.itemIconTintList = null
 
-        // NUEVO
-        db = DatabaseHelper(this)
-
-        cargarLista()
-        actualizarLista()
         configurarMenu()
 
         findViewById<CardView>(R.id.addShoppingButton)
@@ -83,13 +78,6 @@ class ShoppingActivity : AppCompatActivity() {
         )
 
         cargarLista()
-        actualizarLista()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        db.close()
     }
 
     private fun configurarMenu() {
@@ -98,9 +86,7 @@ class ShoppingActivity : AppCompatActivity() {
             findViewById<View>(R.id.menuButton)
 
         menuButton.setOnClickListener {
-            drawerLayout.openDrawer(
-                navigationView
-            )
+            drawerLayout.openDrawer(navigationView)
         }
 
         navigationView.setNavigationItemSelectedListener { item ->
@@ -110,13 +96,9 @@ class ShoppingActivity : AppCompatActivity() {
                 R.id.nav_home -> {
                     drawerLayout.closeDrawers()
 
-                    val intent =
-                        Intent(
-                            this,
-                            MainActivity::class.java
-                        )
-
-                    startActivity(intent)
+                    startActivity(
+                        Intent(this, MainActivity::class.java)
+                    )
                     overridePendingTransition(0, 0)
 
                     true
@@ -125,13 +107,9 @@ class ShoppingActivity : AppCompatActivity() {
                 R.id.nav_tasks -> {
                     drawerLayout.closeDrawers()
 
-                    val intent =
-                        Intent(
-                            this,
-                            TasksActivity::class.java
-                        )
-
-                    startActivity(intent)
+                    startActivity(
+                        Intent(this, TasksActivity::class.java)
+                    )
                     overridePendingTransition(0, 0)
 
                     true
@@ -140,13 +118,9 @@ class ShoppingActivity : AppCompatActivity() {
                 R.id.nav_calendar -> {
                     drawerLayout.closeDrawers()
 
-                    val intent =
-                        Intent(
-                            this,
-                            CalendarActivity::class.java
-                        )
-
-                    startActivity(intent)
+                    startActivity(
+                        Intent(this, CalendarActivity::class.java)
+                    )
                     overridePendingTransition(0, 0)
 
                     true
@@ -155,13 +129,9 @@ class ShoppingActivity : AppCompatActivity() {
                 R.id.nav_notes -> {
                     drawerLayout.closeDrawers()
 
-                    val intent =
-                        Intent(
-                            this,
-                            NotesActivity::class.java
-                        )
-
-                    startActivity(intent)
+                    startActivity(
+                        Intent(this, NotesActivity::class.java)
+                    )
                     overridePendingTransition(0, 0)
 
                     true
@@ -175,13 +145,9 @@ class ShoppingActivity : AppCompatActivity() {
                 R.id.nav_wellness -> {
                     drawerLayout.closeDrawers()
 
-                    val intent =
-                        Intent(
-                            this,
-                            WellnessActivity::class.java
-                        )
-
-                    startActivity(intent)
+                    startActivity(
+                        Intent(this, WellnessActivity::class.java)
+                    )
                     overridePendingTransition(0, 0)
 
                     true
@@ -190,13 +156,9 @@ class ShoppingActivity : AppCompatActivity() {
                 R.id.nav_customization -> {
                     drawerLayout.closeDrawers()
 
-                    val intent =
-                        Intent(
-                            this,
-                            CustomizationActivity::class.java
-                        )
-
-                    startActivity(intent)
+                    startActivity(
+                        Intent(this, CustomizationActivity::class.java)
+                    )
                     overridePendingTransition(0, 0)
 
                     true
@@ -207,24 +169,13 @@ class ShoppingActivity : AppCompatActivity() {
         }
     }
 
-    /*
-     * CAMBIA: ahora el nombre se escribe en el
-     * campo de siempre, y al pulsar + se abre
-     * un diálogo para elegir la cantidad.
-     */
-
     private fun agregarProducto() {
 
         val nombre =
-            shoppingInput.text
-                .toString()
-                .trim()
+            shoppingInput.text.toString().trim()
 
         if (nombre.isEmpty()) {
-
-            shoppingInput.error =
-                "Escribe un producto"
-
+            shoppingInput.error = "Escribe un producto"
             return
         }
 
@@ -236,15 +187,11 @@ class ShoppingActivity : AppCompatActivity() {
         val palette =
             PaletteManager.getSelectedPalette(this)
 
-        val input =
-            EditText(this)
+        val input = EditText(this)
 
-        input.inputType =
-            InputType.TYPE_CLASS_NUMBER
-
+        input.inputType = InputType.TYPE_CLASS_NUMBER
         input.setText("1")
         input.setSelection(1)
-
         input.textSize = 16f
 
         input.setTextColor(palette.text)
@@ -257,11 +204,9 @@ class ShoppingActivity : AppCompatActivity() {
             14.dp()
         )
 
-        val container =
-            LinearLayout(this)
+        val container = LinearLayout(this)
 
-        container.orientation =
-            LinearLayout.VERTICAL
+        container.orientation = LinearLayout.VERTICAL
 
         container.setPadding(
             20.dp(),
@@ -282,23 +227,18 @@ class ShoppingActivity : AppCompatActivity() {
 
         dialog.setOnShowListener {
 
-            val fondo =
-                GradientDrawable().apply {
-
-                    setColor(palette.background)
-
-                    cornerRadius =
-                        24.dp().toFloat()
-                }
+            val fondo = GradientDrawable().apply {
+                setColor(palette.background)
+                cornerRadius = 24.dp().toFloat()
+            }
 
             dialog.window?.setBackgroundDrawable(fondo)
 
-            val titleId =
-                resources.getIdentifier(
-                    "alertTitle",
-                    "id",
-                    "android"
-                )
+            val titleId = resources.getIdentifier(
+                "alertTitle",
+                "id",
+                "android"
+            )
 
             dialog.findViewById<TextView>(titleId)
                 ?.setTextColor(palette.text)
@@ -324,26 +264,35 @@ class ShoppingActivity : AppCompatActivity() {
             ).setOnClickListener {
 
                 val cantidad =
-                    input.text
-                        .toString()
-                        .trim()
-                        .toIntOrNull()
+                    input.text.toString().trim().toIntOrNull()
 
                 if (cantidad == null || cantidad < 1) {
-
                     input.error = "Pon un número de 1 o más"
-
                     return@setOnClickListener
                 }
 
-                insertarProducto(nombre, cantidad)
+                lifecycleScope.launch {
+                    try {
+                        productoRepository.guardar(
+                            Producto(
+                                nombre = nombre,
+                                cantidad = cantidad
+                            )
+                        )
 
-                shoppingInput.text.clear()
+                        shoppingInput.text.clear()
+                        cargarLista()
 
-                cargarLista()
-                actualizarLista()
+                        dialog.dismiss()
 
-                dialog.dismiss()
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            this@ShoppingActivity,
+                            "No se pudo guardar el producto",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             }
         }
 
@@ -355,36 +304,25 @@ class ShoppingActivity : AppCompatActivity() {
         shoppingItemsContainer.removeAllViews()
 
         if (items.isEmpty()) {
-
-            noShoppingItemsText.visibility =
-                View.VISIBLE
-
+            noShoppingItemsText.visibility = View.VISIBLE
             return
         }
 
-        noShoppingItemsText.visibility =
-            View.GONE
+        noShoppingItemsText.visibility = View.GONE
 
         items.forEach { item ->
 
-            /*
-             * CONTENEDOR DE LA FILA
-             */
+            // CONTENEDOR DE LA FILA
 
-            val itemRow =
-                LinearLayout(this)
+            val itemRow = LinearLayout(this)
 
-            itemRow.orientation =
-                LinearLayout.HORIZONTAL
+            itemRow.orientation = LinearLayout.HORIZONTAL
+            itemRow.gravity = Gravity.CENTER_VERTICAL
 
-            itemRow.gravity =
-                Gravity.CENTER_VERTICAL
-
-            val rowParams =
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    64.dp()
-                )
+            val rowParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                64.dp()
+            )
 
             rowParams.setMargins(
                 0,
@@ -393,27 +331,16 @@ class ShoppingActivity : AppCompatActivity() {
                 10.dp()
             )
 
-            itemRow.layoutParams =
-                rowParams
+            itemRow.layoutParams = rowParams
 
-            /*
-             * FONDO REDONDEADO
-             */
+            // FONDO REDONDEADO
 
-            val background =
-                GradientDrawable()
+            val background = GradientDrawable()
 
-            background.setColor(
-                getColor(
-                    R.color.white
-                )
-            )
+            background.setColor(getColor(R.color.white))
+            background.cornerRadius = 18.dp().toFloat()
 
-            background.cornerRadius =
-                18.dp().toFloat()
-
-            itemRow.background =
-                background
+            itemRow.background = background
 
             itemRow.setPadding(
                 8.dp(),
@@ -422,12 +349,9 @@ class ShoppingActivity : AppCompatActivity() {
                 4.dp()
             )
 
-            /*
-             * CHECKBOX
-             */
+            // CHECKBOX
 
-            val checkBox =
-                CheckBox(this)
+            val checkBox = CheckBox(this)
 
             checkBox.layoutParams =
                 LinearLayout.LayoutParams(
@@ -435,22 +359,13 @@ class ShoppingActivity : AppCompatActivity() {
                     48.dp()
                 )
 
-            checkBox.isChecked =
-                item.comprado
+            checkBox.isChecked = item.comprado
 
-            itemRow.addView(
-                checkBox
-            )
+            itemRow.addView(checkBox)
 
-            /*
-             * NOMBRE DEL PRODUCTO
-             *
-             * CAMBIA: muestra la cantidad delante
-             * cuando es más de 1.
-             */
+            // NOMBRE DEL PRODUCTO
 
-            val itemText =
-                TextView(this)
+            val itemText = TextView(this)
 
             val textParams =
                 LinearLayout.LayoutParams(
@@ -458,51 +373,36 @@ class ShoppingActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
 
-            textParams.weight =
-                1f
+            textParams.weight = 1f
+            textParams.marginStart = 4.dp()
 
-            textParams.marginStart =
-                4.dp()
-
-            itemText.layoutParams =
-                textParams
+            itemText.layoutParams = textParams
 
             itemText.text =
-                if (item.cantidad > 1)
+                if (item.cantidad > 1) {
                     "${item.cantidad} × ${item.nombre}"
-                else
+                } else {
                     item.nombre
+                }
 
-            itemText.textSize =
-                16f
+            itemText.textSize = 16f
 
             itemText.setTextColor(
-                getColor(
-                    R.color.soft_text
-                )
+                getColor(R.color.soft_text)
             )
 
-            itemText.maxLines =
-                2
+            itemText.maxLines = 2
 
             aplicarEstadoProducto(
                 itemText,
                 item.comprado
             )
 
-            itemRow.addView(
-                itemText
-            )
+            itemRow.addView(itemText)
 
-            /*
-             * BOTÓN BORRAR
-             *
-             * Solo aparece cuando
-             * el producto está marcado.
-             */
+            // BOTÓN BORRAR
 
-            val deleteButton =
-                ImageButton(this)
+            val deleteButton = ImageButton(this)
 
             deleteButton.layoutParams =
                 LinearLayout.LayoutParams(
@@ -515,73 +415,84 @@ class ShoppingActivity : AppCompatActivity() {
             )
 
             deleteButton.setColorFilter(
-                getColor(
-                    R.color.soft_coral
-                )
+                getColor(R.color.soft_coral)
             )
 
-            deleteButton.background =
-                null
+            deleteButton.background = null
 
             deleteButton.contentDescription =
                 "Eliminar producto"
 
             deleteButton.visibility =
-                if (item.comprado)
+                if (item.comprado) {
                     View.VISIBLE
-                else
+                } else {
                     View.GONE
+                }
 
-            itemRow.addView(
-                deleteButton
-            )
+            itemRow.addView(deleteButton)
 
-            /*
-             * AL MARCAR EL CHECKBOX
-             *
-             * CAMBIA: escribe el estado en SQLite.
-             */
+            // ACTUALIZAR ESTADO EN FIRESTORE
 
-            checkBox.setOnCheckedChangeListener {
-                    _, checked ->
+            checkBox.setOnCheckedChangeListener { _, checked ->
 
-                item.comprado =
-                    checked
+                val estadoAnterior = item.comprado
 
-                actualizarComprado(
-                    item.id,
-                    checked
-                )
+                item.comprado = checked
 
-                aplicarEstadoProducto(
-                    itemText,
-                    checked
-                )
+                aplicarEstadoProducto(itemText, checked)
 
                 deleteButton.visibility =
-                    if (checked)
-                        View.VISIBLE
-                    else
-                        View.GONE
+                    if (checked) View.VISIBLE else View.GONE
+
+                checkBox.isEnabled = false
+
+                lifecycleScope.launch {
+                    try {
+                        productoRepository.actualizarComprado(
+                            item.id,
+                            checked
+                        )
+
+                    } catch (e: Exception) {
+
+                        item.comprado = estadoAnterior
+                        checkBox.isChecked = estadoAnterior
+
+                        aplicarEstadoProducto(
+                            itemText,
+                            estadoAnterior
+                        )
+
+                        deleteButton.visibility =
+                            if (estadoAnterior) {
+                                View.VISIBLE
+                            } else {
+                                View.GONE
+                            }
+
+                        Toast.makeText(
+                            this@ShoppingActivity,
+                            "No se pudo actualizar el producto",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                    } finally {
+                        checkBox.isEnabled = true
+                    }
+                }
             }
 
-            /*
-             * AL PULSAR BORRAR
-             *
-             * CAMBIA: borra por id.
-             */
+            // ELIMINAR PRODUCTO
 
             deleteButton.setOnClickListener {
-
                 eliminarProducto(
                     item.id,
                     item.nombre
                 )
             }
 
-            shoppingItemsContainer.addView(
-                itemRow
-            )
+            shoppingItemsContainer.addView(itemRow)
         }
     }
 
@@ -596,8 +507,7 @@ class ShoppingActivity : AppCompatActivity() {
                 textView.paintFlags or
                         Paint.STRIKE_THRU_TEXT_FLAG
 
-            textView.alpha =
-                0.55f
+            textView.alpha = 0.55f
 
         } else {
 
@@ -605,17 +515,12 @@ class ShoppingActivity : AppCompatActivity() {
                 textView.paintFlags and
                         Paint.STRIKE_THRU_TEXT_FLAG.inv()
 
-            textView.alpha =
-                1f
+            textView.alpha = 1f
         }
     }
 
-    /*
-     * CAMBIA: recibe id y nombre, no la posición.
-     */
-
     private fun eliminarProducto(
-        id: Long,
+        id: String,
         nombre: String
     ) {
 
@@ -627,131 +532,45 @@ class ShoppingActivity : AppCompatActivity() {
             textoCancelar = "CANCELAR"
         ) {
 
-            borrarProducto(id)
+            lifecycleScope.launch {
+                try {
+                    productoRepository.eliminar(id)
 
-            cargarLista()
-            actualizarLista()
+                    cargarLista()
+
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        this@ShoppingActivity,
+                        "No se pudo eliminar el producto",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
     }
 
-    /*
-     * NUEVO: operaciones sobre SQLite.
-     * Reemplazan a guardarLista().
-     */
-
-    private fun insertarProducto(
-        nombre: String,
-        cantidad: Int
-    ) {
-
-        val valores = ContentValues()
-
-        valores.put(
-            DatabaseHelper.COL_NOMBRE,
-            nombre
-        )
-
-        valores.put(
-            DatabaseHelper.COL_CANTIDAD,
-            cantidad
-        )
-
-        valores.put(
-            DatabaseHelper.COL_COMPRADO,
-            0
-        )
-
-        db.writableDatabase.insert(
-            DatabaseHelper.TABLA_PRODUCTO,
-            null,
-            valores
-        )
-    }
-
-    private fun actualizarComprado(
-        id: Long,
-        comprado: Boolean
-    ) {
-
-        val valores = ContentValues()
-
-        valores.put(
-            DatabaseHelper.COL_COMPRADO,
-            if (comprado) 1 else 0
-        )
-
-        db.writableDatabase.update(
-            DatabaseHelper.TABLA_PRODUCTO,
-            valores,
-            "${DatabaseHelper.COL_ID_PRODUCTO} = ?",
-            arrayOf(id.toString())
-        )
-    }
-
-    private fun borrarProducto(id: Long) {
-
-        db.writableDatabase.delete(
-            DatabaseHelper.TABLA_PRODUCTO,
-            "${DatabaseHelper.COL_ID_PRODUCTO} = ?",
-            arrayOf(id.toString())
-        )
-    }
-
-    /*
-     * CAMBIA: lee desde SQLite.
-     */
+    // CARGAR PRODUCTOS DESDE FIRESTORE
 
     private fun cargarLista() {
 
-        items.clear()
+        lifecycleScope.launch {
+            try {
 
-        val cursor = db.readableDatabase.query(
-            DatabaseHelper.TABLA_PRODUCTO,
-            arrayOf(
-                DatabaseHelper.COL_ID_PRODUCTO,
-                DatabaseHelper.COL_NOMBRE,
-                DatabaseHelper.COL_CANTIDAD,
-                DatabaseHelper.COL_COMPRADO
-            ),
-            null,
-            null,
-            null,
-            null,
-            "${DatabaseHelper.COL_ID_PRODUCTO} ASC"
-        )
+                val productosFirestore =
+                    productoRepository.listar()
 
-        cursor.use {
+                items.clear()
+                items.addAll(productosFirestore)
 
-            val colId =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_ID_PRODUCTO
-                )
+                actualizarLista()
 
-            val colNombre =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_NOMBRE
-                )
+            } catch (e: Exception) {
 
-            val colCantidad =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_CANTIDAD
-                )
-
-            val colComprado =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_COMPRADO
-                )
-
-            while (it.moveToNext()) {
-
-                items.add(
-                    ShoppingItem(
-                        id = it.getLong(colId),
-                        nombre = it.getString(colNombre),
-                        cantidad = it.getInt(colCantidad),
-                        comprado = it.getInt(colComprado) == 1
-                    )
-                )
+                Toast.makeText(
+                    this@ShoppingActivity,
+                    "No se pudieron cargar los productos",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -763,10 +582,3 @@ class ShoppingActivity : AppCompatActivity() {
                 ).toInt()
     }
 }
-
-data class ShoppingItem(
-    val id: Long,
-    var nombre: String,
-    var cantidad: Int,
-    var comprado: Boolean
-)
