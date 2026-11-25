@@ -2,7 +2,6 @@
 package com.example.todolist
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 
 class TareaRepository(
@@ -20,23 +19,27 @@ class TareaRepository(
         return referencia.id
     }
 
-    // Obtiene todas las tareas ordenadas por fecha de vencimiento.
+    // Obtiene todas las tareas, incluidas las que no tienen fecha.
     suspend fun listar(): List<Tarea> {
-        val resultado = coleccion
-            .orderBy("fechaVencimiento", Query.Direction.ASCENDING)
-            .get()
-            .await()
+        val resultado = coleccion.get().await()
 
-        return resultado.documents.mapNotNull { documento ->
-            documento.toObject(Tarea::class.java)?.copy(
-                id = documento.id
+        return resultado.documents
+            .mapNotNull { documento ->
+                documento.toObject(Tarea::class.java)?.copy(
+                    id = documento.id
+                )
+            }
+            .sortedWith(
+                compareBy<Tarea> { it.fechaVencimiento.isNullOrBlank() }
+                    .thenBy { it.fechaVencimiento.orEmpty() }
             )
-        }
     }
 
     // Busca una tarea por su ID.
     suspend fun obtener(id: String): Tarea? {
-        require(id.isNotBlank()) { "El ID de la tarea no puede estar vacío" }
+        require(id.isNotBlank()) {
+            "El ID de la tarea no puede estar vacío"
+        }
 
         val documento = coleccion.document(id).get().await()
 
@@ -47,7 +50,9 @@ class TareaRepository(
 
     // Actualiza todos los datos de una tarea existente.
     suspend fun actualizar(tarea: Tarea) {
-        require(tarea.id.isNotBlank()) { "La tarea debe tener un ID" }
+        require(tarea.id.isNotBlank()) {
+            "La tarea debe tener un ID"
+        }
 
         coleccion.document(tarea.id)
             .set(tarea)
@@ -56,7 +61,9 @@ class TareaRepository(
 
     // Cambia el estado de completada de una tarea.
     suspend fun actualizarCompletada(id: String, completada: Boolean) {
-        require(id.isNotBlank()) { "El ID de la tarea no puede estar vacío" }
+        require(id.isNotBlank()) {
+            "El ID de la tarea no puede estar vacío"
+        }
 
         coleccion.document(id)
             .update("completada", completada)
@@ -65,7 +72,9 @@ class TareaRepository(
 
     // Elimina una tarea por su ID.
     suspend fun eliminar(id: String) {
-        require(id.isNotBlank()) { "El ID de la tarea no puede estar vacío" }
+        require(id.isNotBlank()) {
+            "El ID de la tarea no puede estar vacío"
+        }
 
         coleccion.document(id)
             .delete()

@@ -1,7 +1,6 @@
 package com.example.todolist
 
 import android.app.AlertDialog
-import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Paint
 import android.graphics.drawable.ColorDrawable
@@ -21,16 +20,28 @@ import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class TasksActivity : AppCompatActivity() {
 
-    private val tasks = mutableListOf<Task>()
+    private data class TaskUi(
+        val id: String,
+        val name: String,
+        val difficulty: String,
+        val academic: Boolean,
+        val dueDate: String,
+        var completed: Boolean,
+        val prerequisiteId: String? = null
+    )
+
+    private val tasks = mutableListOf<TaskUi>()
 
     private lateinit var easyPreview: TextView
     private lateinit var mediumPreview: TextView
     private lateinit var hardPreview: TextView
 
-    private lateinit var db: DatabaseHelper
+    private lateinit var repository: TareaRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,10 +60,8 @@ class TasksActivity : AppCompatActivity() {
         mediumPreview = findViewById(R.id.mediumPreview)
         hardPreview = findViewById(R.id.hardPreview)
 
-        db = DatabaseHelper(this)
-
+        repository = TareaRepository()
         cargarTareas()
-        actualizarVista()
 
         val drawerLayout =
             findViewById<androidx.drawerlayout.widget.DrawerLayout>(
@@ -193,14 +202,6 @@ class TasksActivity : AppCompatActivity() {
         )
 
         cargarTareas()
-        actualizarVista()
-    }
-
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        db.close()
     }
 
     private fun mostrarNuevaTarea() {
@@ -237,7 +238,7 @@ class TasksActivity : AppCompatActivity() {
                 R.id.prerequisiteSuggestions
             )
 
-        var selectedPrerequisiteId: Long? = null
+        var selectedPrerequisiteId: String? = null
 
         academicCheck.setOnCheckedChangeListener { _, checked ->
 
@@ -418,27 +419,29 @@ class TasksActivity : AppCompatActivity() {
                         else -> "Fácil"
                     }
 
-                val task = Task(
-                    id = System.currentTimeMillis(),
-                    name = name,
-                    difficulty = difficulty,
-                    academic =
-                        academicCheck.isChecked,
-                    dueDate =
-                        if (academicCheck.isChecked)
-                            fechaIso
-                        else
-                            "",
-                    completed = false,
+                val tarea = Tarea(
+                    nombre = name,
+                    dificultad = difficulty,
+                    academica = academicCheck.isChecked,
+                    fechaVencimiento = if (academicCheck.isChecked) fechaIso else null,
+                    completada = false,
                     prerequisiteId = requisitoId
                 )
 
-                insertarTarea(task)
-
-                cargarTareas()
-                actualizarVista()
-
-                dialog.dismiss()
+                lifecycleScope.launch {
+                    try {
+                        repository.guardar(tarea)
+                        cargarTareas()
+                        dialog.dismiss()
+                    } catch (e: Exception) {
+                        android.util.Log.e("TasksActivity", "Error al guardar tarea", e)
+                        android.widget.Toast.makeText(
+                            this@TasksActivity,
+                            "No se pudo guardar la tarea",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
         }
 
@@ -448,7 +451,7 @@ class TasksActivity : AppCompatActivity() {
     private fun mostrarSugerencias(
         texto: String,
         contenedor: LinearLayout,
-        onElegir: (Long, String) -> Unit
+        onElegir: (String, String) -> Unit
     ) {
 
         contenedor.removeAllViews()
@@ -766,39 +769,22 @@ class TasksActivity : AppCompatActivity() {
 
                     if (task.completed) {
 
-                        task.completed = false
-
-                        actualizarCompletada(
-                            task.id,
-                            false
-                        )
-
-                        aplicarEstadoTarea(
-                            taskName,
-                            false
-                        )
-
-                        deleteButton.visibility =
-                            View.GONE
-
-                        actualizarVista()
-
+                        cambiarEstadoTarea(task, false) {
+                            aplicarEstadoTarea(
+                                taskName,
+                                false
+                            )
+                            deleteButton.visibility = View.GONE
+                        }
                         return@setOnClickListener
                     }
 
-                    // CAMBIA: consulta la BD, no la lista
-                    val requisitoCompletado =
-                        task.prerequisiteId?.let { id ->
-                            estaCompletada(id)
-                        } ?: true
+                    val requisitoCompletado = task.prerequisiteId?.let { id ->
+                        tasks.firstOrNull { it.id == id }?.completed ?: false
+                    } ?: true
 
-                    if (
-                        task.prerequisiteId != null &&
-                        !requisitoCompletado
-                    ) {
-
+                    if (task.prerequisiteId != null && !requisitoCompletado) {
                         checkBox.isChecked = false
-
                         AlertDialog.Builder(this)
                             .setTitle("Requisito pendiente")
                             .setMessage(
@@ -806,65 +792,41 @@ class TasksActivity : AppCompatActivity() {
                                         "¿Seguro que quieres completar \"${task.name}\"?"
                             )
                             .setPositiveButton("Sí") { _, _ ->
-
-                                task.completed = true
-
-                                checkBox.isChecked = true
-
-                                actualizarCompletada(
-                                    task.id,
-                                    true
-                                )
-
-                                aplicarEstadoTarea(
-                                    taskName,
-                                    true
-                                )
-
-                                deleteButton.visibility =
-                                    View.VISIBLE
-
-                                actualizarVista()
+                                cambiarEstadoTarea(task, true) {
+                                    checkBox.isChecked = true
+                                    aplicarEstadoTarea(taskName, true)
+                                    deleteButton.visibility = View.VISIBLE
+                                }
                             }
-                            .setNegativeButton("No") { _, _ ->
-
-                                checkBox.isChecked = false
-                            }
+                            .setNegativeButton("No") { _, _ -> checkBox.isChecked = false }
                             .show()
-
                     } else {
-
-                        task.completed = true
-
-                        actualizarCompletada(
-                            task.id,
-                            true
-                        )
-
-                        aplicarEstadoTarea(
-                            taskName,
-                            true
-                        )
-
-                        deleteButton.visibility =
-                            View.VISIBLE
-
-                        actualizarVista()
+                        cambiarEstadoTarea(task, true) {
+                            checkBox.isChecked = true
+                            aplicarEstadoTarea(taskName, true)
+                            deleteButton.visibility = View.VISIBLE
+                        }
                     }
                 }
 
                 deleteButton.setOnClickListener {
 
-                    borrarTarea(task.id)
-
-                    cargarTareas()
-                    actualizarVista()
-
-                    dialog.dismiss()
-
-                    mostrarCategoria(
-                        difficulty
-                    )
+                    lifecycleScope.launch {
+                        try {
+                            repository.eliminar(task.id)
+                            dialog.dismiss()
+                            cargarTareas {
+                                mostrarCategoria(difficulty)
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("TasksActivity", "Error al eliminar tarea", e)
+                            android.widget.Toast.makeText(
+                                this@TasksActivity,
+                                "No se pudo eliminar la tarea",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
                 }
 
                 taskContainer.addView(
@@ -1039,194 +1001,54 @@ class TasksActivity : AppCompatActivity() {
             text
     }
 
-    private fun insertarTarea(task: Task) {
-
-        val valores = ContentValues()
-
-        valores.put(
-            DatabaseHelper.COL_ID_TAREA,
-            task.id
-        )
-
-        valores.put(
-            DatabaseHelper.COL_NOMBRE,
-            task.name
-        )
-
-        valores.put(
-            DatabaseHelper.COL_DIFICULTAD,
-            task.difficulty
-        )
-
-        valores.put(
-            DatabaseHelper.COL_ACADEMICA,
-            if (task.academic) 1 else 0
-        )
-
-        valores.put(
-            DatabaseHelper.COL_FECHA,
-            task.dueDate?.ifEmpty { null }
-        )
-
-        valores.put(
-            DatabaseHelper.COL_COMPLETADA,
-            if (task.completed) 1 else 0
-        )
-
-        valores.put(
-            DatabaseHelper.COL_PREREQUISITO,
-            ""
-        )
-
-        // CAMBIA: putNull explícito
-        if (task.prerequisiteId != null) {
-            valores.put(
-                DatabaseHelper.COL_PREREQUISITO_ID,
-                task.prerequisiteId
-            )
-        } else {
-            valores.putNull(
-                DatabaseHelper.COL_PREREQUISITO_ID
-            )
-        }
-
-        db.writableDatabase.insert(
-            DatabaseHelper.TABLA_TAREA,
-            null,
-            valores
-        )
-    }
-
-    private fun actualizarCompletada(
-        id: Long,
-        completada: Boolean
+    private fun cambiarEstadoTarea(
+        task: TaskUi,
+        completada: Boolean,
+        onSuccess: () -> Unit = {}
     ) {
-
-        val valores = ContentValues()
-
-        valores.put(
-            DatabaseHelper.COL_COMPLETADA,
-            if (completada) 1 else 0
-        )
-
-        db.writableDatabase.update(
-            DatabaseHelper.TABLA_TAREA,
-            valores,
-            "${DatabaseHelper.COL_ID_TAREA} = ?",
-            arrayOf(id.toString())
-        )
-    }
-
-    private fun estaCompletada(id: Long): Boolean {
-
-        val cursor = db.readableDatabase.query(
-            DatabaseHelper.TABLA_TAREA,
-            arrayOf(DatabaseHelper.COL_COMPLETADA),
-            "${DatabaseHelper.COL_ID_TAREA} = ?",
-            arrayOf(id.toString()),
-            null,
-            null,
-            null
-        )
-
-        cursor.use {
-            if (it.moveToFirst()) {
-                return it.getInt(0) == 1
+        lifecycleScope.launch {
+            try {
+                repository.actualizarCompletada(task.id, completada)
+                task.completed = completada
+                onSuccess()
+                actualizarVista()
+            } catch (e: Exception) {
+                android.util.Log.e("TasksActivity", "Error al actualizar tarea", e)
+                android.widget.Toast.makeText(
+                    this@TasksActivity,
+                    "No se pudo actualizar la tarea",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                cargarTareas()
             }
         }
-
-        return false
     }
 
-    private fun borrarTarea(id: Long) {
-
-        db.writableDatabase.delete(
-            DatabaseHelper.TABLA_TAREA,
-            "${DatabaseHelper.COL_ID_TAREA} = ?",
-            arrayOf(id.toString())
-        )
-    }
-
-    private fun cargarTareas() {
-
-        tasks.clear()
-
-        val cursor = db.readableDatabase.query(
-            DatabaseHelper.TABLA_TAREA,
-            arrayOf(
-                DatabaseHelper.COL_ID_TAREA,
-                DatabaseHelper.COL_NOMBRE,
-                DatabaseHelper.COL_DIFICULTAD,
-                DatabaseHelper.COL_ACADEMICA,
-                DatabaseHelper.COL_FECHA,
-                DatabaseHelper.COL_COMPLETADA,
-                DatabaseHelper.COL_PREREQUISITO_ID
-            ),
-            null,
-            null,
-            null,
-            null,
-            "${DatabaseHelper.COL_ID_TAREA} ASC"
-        )
-
-        cursor.use {
-
-            val colId =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_ID_TAREA
-                )
-
-            val colNombre =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_NOMBRE
-                )
-
-            val colDificultad =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_DIFICULTAD
-                )
-
-            val colAcademica =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_ACADEMICA
-                )
-
-            val colFecha =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_FECHA
-                )
-
-            val colCompletada =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_COMPLETADA
-                )
-
-            val colPrerequisito =
-                it.getColumnIndexOrThrow(
-                    DatabaseHelper.COL_PREREQUISITO_ID
-                )
-
-            while (it.moveToNext()) {
-
-                tasks.add(
-                    Task(
-                        id = it.getLong(colId),
-                        name = it.getString(colNombre),
-                        difficulty = it.getString(colDificultad),
-                        academic = it.getInt(colAcademica) == 1,
-                        dueDate =
-                            if (it.isNull(colFecha))
-                                ""
-                            else
-                                it.getString(colFecha),
-                        completed = it.getInt(colCompletada) == 1,
-                        prerequisiteId =
-                            if (it.isNull(colPrerequisito))
-                                null
-                            else
-                                it.getLong(colPrerequisito)
+    private fun cargarTareas(onLoaded: (() -> Unit)? = null) {
+        lifecycleScope.launch {
+            try {
+                val tareasFirestore = repository.listar()
+                tasks.clear()
+                tasks.addAll(tareasFirestore.map { tarea ->
+                    TaskUi(
+                        id = tarea.id,
+                        name = tarea.nombre,
+                        difficulty = tarea.dificultad,
+                        academic = tarea.academica,
+                        dueDate = tarea.fechaVencimiento.orEmpty(),
+                        completed = tarea.completada,
+                        prerequisiteId = tarea.prerequisiteId
                     )
-                )
+                })
+                actualizarVista()
+                onLoaded?.invoke()
+            } catch (e: Exception) {
+                android.util.Log.e("TasksActivity", "Error al cargar tareas", e)
+                android.widget.Toast.makeText(
+                    this@TasksActivity,
+                    "No se pudieron cargar las tareas",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
