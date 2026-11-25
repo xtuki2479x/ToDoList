@@ -1,3 +1,4 @@
+
 package com.example.todolist
 
 import android.content.Intent
@@ -6,9 +7,12 @@ import android.view.View
 import android.widget.CalendarView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -25,15 +29,13 @@ class CalendarActivity : AppCompatActivity() {
     private lateinit var noDayTasksText: TextView
 
     private val calendar = Calendar.getInstance()
-    private val tasks = mutableListOf<Task>()
+    private val tasks = mutableListOf<Tarea>()
 
-    private lateinit var dbHelper: DatabaseHelper
+    private val tareaRepository = TareaRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
-
-        dbHelper = DatabaseHelper(this)
 
         val selectedPalette =
             PaletteManager.getSelectedPalette(this)
@@ -69,13 +71,6 @@ class CalendarActivity : AppCompatActivity() {
         )
 
         cargarTareas()
-        mostrarTareasDelDia(calendar.timeInMillis)
-    }
-
-
-    override fun onDestroy() {
-        dbHelper.close()
-        super.onDestroy()
     }
 
     private fun configurarMenu() {
@@ -153,17 +148,29 @@ class CalendarActivity : AppCompatActivity() {
 
                 R.id.nav_wellness -> {
                     drawerLayout.closeDrawers()
-                    val intent = Intent(this, WellnessActivity::class.java)
+
+                    val intent = Intent(
+                        this,
+                        WellnessActivity::class.java
+                    )
+
                     startActivity(intent)
                     overridePendingTransition(0, 0)
+
                     true
                 }
 
                 R.id.nav_customization -> {
                     drawerLayout.closeDrawers()
-                    val intent = Intent(this, CustomizationActivity::class.java)
+
+                    val intent = Intent(
+                        this,
+                        CustomizationActivity::class.java
+                    )
+
                     startActivity(intent)
                     overridePendingTransition(0, 0)
+
                     true
                 }
 
@@ -249,7 +256,6 @@ class CalendarActivity : AppCompatActivity() {
         val fechaSeleccionada =
             formatoFecha.format(timeInMillis)
 
-
         val formatoVisible = SimpleDateFormat(
             "dd/MM/yyyy",
             Locale.getDefault()
@@ -260,9 +266,9 @@ class CalendarActivity : AppCompatActivity() {
 
         val tareasDelDia = tasks.filter { task ->
 
-            task.academic &&
-                    !task.dueDate.isNullOrEmpty() &&
-                    task.dueDate == fechaSeleccionada
+            task.academica &&
+                    !task.fechaVencimiento.isNullOrEmpty() &&
+                    task.fechaVencimiento == fechaSeleccionada
         }
 
         if (tareasDelDia.isEmpty()) {
@@ -280,13 +286,14 @@ class CalendarActivity : AppCompatActivity() {
             val taskText = TextView(this)
 
             taskText.text =
-                if (task.completed) {
-                    "☑  ${task.name}"
+                if (task.completada) {
+                    "☑  ${task.nombre}"
                 } else {
-                    "□  ${task.name}"
+                    "□  ${task.nombre}"
                 }
 
             taskText.textSize = 16f
+
             taskText.setTextColor(
                 getColor(R.color.soft_text)
             )
@@ -304,7 +311,25 @@ class CalendarActivity : AppCompatActivity() {
 
     private fun cargarTareas() {
 
-        tasks.clear()
-        tasks.addAll(dbHelper.cargarTareas())
+        lifecycleScope.launch {
+
+            try {
+
+                val tareasFirestore = tareaRepository.listar()
+
+                tasks.clear()
+                tasks.addAll(tareasFirestore)
+
+                mostrarTareasDelDia(calendar.timeInMillis)
+
+            } catch (e: Exception) {
+
+                Toast.makeText(
+                    this@CalendarActivity,
+                    "No se pudieron cargar las tareas",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 }
